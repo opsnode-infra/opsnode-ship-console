@@ -14,7 +14,8 @@ const PRODUCTS = {
     'kit-discord': { price: 39000000 },
     'kit-telegram': { price: 39000000 },
     'kit-ultimate': { price: 59000000 },
-    'kit-boilerplate': { price: 29000000 } // Ajout du Kit 4 (29 USDC par exemple)
+    'kit-boilerplate-standard': { price: 29000000 },
+    'kit-boilerplate-premium': { price: 79000000 }
 };
 
 exports.handler = async (event, context) => {
@@ -68,17 +69,18 @@ exports.handler = async (event, context) => {
         await redis.set(`sig:${signature}`, "consumed", "EX", MAX_AGE_SECONDS);
 
         // 8. DÉLIVRANCE (URLs secrètes factices à remplacer par tes vrais liens)
-        const directSecretUrls = {
-            'kit-discord': 'https://ton-stockage.com/solana-discord-bot.zip',
-            'kit-telegram': 'https://ton-stockage.com/solana-telegram-bot.zip',
-            'kit-ultimate': 'https://ton-stockage.com/solana-ultimate-pack.zip',
-            'kit-boilerplate': 'https://ton-stockage.com/solana-boilerplates.zip'
-        };
+        const secureStorage = {
+    'kit-discord': 'https://ton-stockage.com/bot-discord.zip',
+    'kit-telegram': 'https://ton-stockage.com/bot-telegram.zip',
+    'kit-ultimate': 'https://ton-stockage.com/pack-ultimate.zip',
+    'kit-boilerplate-standard': 'https://ton-stockage.com/boilerplate-std.zip',
+    'kit-boilerplate-premium': 'https://ton-stockage.com/boilerplate-premium.zip'
+};
 
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secureUrl: directSecretUrls[packageId] })
+            body: JSON.stringify({ secureUrl: secureStorage[packageId] })
         };
 
     } catch (error) {

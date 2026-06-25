@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OPSNODE | SHIP — Crypto-Gated Software Provisioning</title>
+    <meta name="description" content="Purchase access keys via direct USDC transaction to permanently unlock production-ready web3 deployment packages.">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 500'%3E%3Crect width='500' height='500' fill='%2306060c' rx='80'/%3E%3Cpolygon points='250,30 440,140 440,360 250,470 60,360 60,140' fill='none' stroke='%23ff007f' stroke-width='8'/%3E%3Ccircle cx='250' cy='250' r='120' fill='none' stroke='%2300ff9d' stroke-width='4'/%3E%3C/svg%3E">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
         tailwind.config = {
@@ -14,132 +18,201 @@
             theme: {
                 extend: {
                     fontFamily: { mono: ['"JetBrains Mono"', 'monospace'] },
-                    colors: { cyber: { black: '#06060c', dark: '#0a0a14', terminalGreen: '#00FF66', discreteCyan: '#00D2FF', neonPink: '#ff007f' } }
+                    colors: {
+                        cyber: { black: '#06060c', dark: '#0a0a14', terminalGreen: '#00FF66', discreteCyan: '#00D2FF', neonPink: '#ff007f' }
+                    }
                 }
             }
         }
     </script>
     <style>
+        html { scroll-behavior: smooth; }
         body { font-family: 'JetBrains Mono', monospace; background-color: #06060c; color: #cbd5e1; }
-        .gradient-text { background: linear-gradient(90deg, #00D2FF 0%, #ff007f 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .gradient-text {
+            background: linear-gradient(90deg, #00D2FF 0%, #ff007f 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
         .premium-card-pink { background: linear-gradient(145deg, #0b0b16 0%, #06060c 100%); box-shadow: 0 0 25px rgba(255, 0, 127, 0.15); border: 1px solid rgba(255, 0, 127, 0.4); }
         .premium-card-green { background: linear-gradient(145deg, #070e0a 0%, #06060c 100%); border: 1px solid rgba(0, 255, 102, 0.2); }
+        .premium-card-green:hover { border-color: rgba(0, 255, 102, 0.5); box-shadow: 0 0 20px rgba(0, 255, 102, 0.08); }
         .premium-card-cyan { background: linear-gradient(145deg, #060a12 0%, #06060c 100%); border: 1px solid rgba(0, 210, 255, 0.15); }
+        .glow-btn-pink:hover { box-shadow: 0 0 20px rgba(255, 0, 127, 0.5); background-color: #ff007f; color: white; }
+        
+        #unlock-ticker-container { -webkit-overflow-scrolling: touch; }
         .modal-overlay { background: rgba(6, 6, 12, 0.95); backdrop-filter: blur(5px); }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between select-none relative">
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyber-neonPink selection:text-white">
 
-    <header class="w-full border-b border-slate-900 bg-cyber-black/80 backdrop-blur sticky top-0 z-50 px-8 py-4 flex items-center justify-between">
-        <span class="font-bold tracking-widest text-white text-sm uppercase">OPSNODE<span class="text-cyber-neonPink">.SHIP</span></span>
-        <div class="text-xs font-mono text-cyber-terminalGreen border border-cyber-terminalGreen px-3 py-1 rounded">
-            STATUS: <span class="animate-pulse">ONLINE</span>
+    <header class="w-full border-b border-slate-900 bg-cyber-black/80 backdrop-blur sticky top-0 z-50 px-4 md:px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <span class="font-bold tracking-widest text-white text-sm uppercase">OPSNODE<span class="text-cyber-neonPink">.SHIP</span></span>
+            <span class="text-[9px] text-gray-500 font-mono border border-slate-800 px-1.5 py-0.5 rounded bg-black/40">[ MODULE: SHIP // CODE_DISTRIBUTION ]</span>
+        </div>
+        
+        <div id="unlock-ticker-container" class="text-[11px] text-gray-400 bg-black/50 px-4 py-1.5 rounded border border-slate-900 max-w-full text-center overflow-x-auto whitespace-nowrap font-mono">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-cyber-discreteCyan animate-pulse mr-2"></span>
+            <span class="tracking-wider text-slate-400">[ PAYMENT_REGISTRY ] PROTOCOL: <span class="text-white">SOLANA_PAY</span> | NETWORK: <span class="text-cyber-discreteCyan">SOLANA_MAINNET</span> | GATEWAY: <span class="text-cyber-terminalGreen font-bold">READY</span></span>
+        </div>
+
+        <div>
+            <button id="wallet-trigger" onclick="connectPhantomWallet()" class="bg-transparent border border-cyber-terminalGreen text-cyber-terminalGreen hover:bg-cyber-terminalGreen/5 font-mono text-xs px-4 py-1.5 rounded tracking-widest transition uppercase">
+                [ CONNECT_WALLET ]
+            </button>
         </div>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 md:px-8 pt-16 pb-16 flex flex-col items-center justify-center">
-        
-        <div class="w-full max-w-4xl text-center mb-20">
-            <h1 class="text-4xl md:text-6xl font-black text-white mb-2 uppercase tracking-tight">
-                CRYPTO-GATED
+    <main class="flex-grow container mx-auto px-4 md:px-8 pt-12 pb-16 flex flex-col items-center justify-center">
+        <section class="w-full max-w-4xl text-center mb-16">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-white tracking-tight mb-4 uppercase">
+                Crypto-Gated<br><span class="gradient-text">Software Provisioning.</span>
             </h1>
-            <h2 class="text-4xl md:text-6xl font-black mb-8 uppercase tracking-tight gradient-text">
-                SOFTWARE PROVISIONING.
-            </h2>
-            <p class="text-sm md:text-base text-gray-400 font-mono mb-10 max-w-3xl mx-auto leading-relaxed">
+            <p class="text-xs md:text-sm text-gray-400 max-w-2xl mx-auto mb-8 font-light leading-relaxed font-mono">
                 Purchase an access key via direct USDC transaction to permanently unlock production-ready deployment packages. No tracking, no forms, direct encrypted file delivery.
             </p>
-            
-            <div class="flex flex-wrap justify-center gap-6 md:gap-12 border-t border-b border-slate-800 py-4 font-mono text-[10px] md:text-xs text-slate-500 uppercase">
-                <span><i class="fa-solid fa-code text-cyber-terminalGreen mr-2"></i> [✓] 100% CLEAN CODE</span>
-                <span><i class="fa-solid fa-server text-cyber-discreteCyan mr-2"></i> [✓] SECURE BACKEND DISTRIBUTION</span>
-                <span><i class="fa-solid fa-cube text-cyber-neonPink mr-2"></i> [✓] SELF-HOSTED (YOUR VPS)</span>
-            </div>
-        </div>
 
-        <div class="w-full max-w-6xl text-left mb-6 font-mono text-xs text-cyber-terminalGreen tracking-widest uppercase">
+            <div class="flex flex-wrap items-center justify-center gap-4 md:gap-8 text-[10px] tracking-wider text-slate-500 border-t border-b border-slate-900 py-3 max-w-2xl mx-auto font-mono uppercase">
+                <span><i class="fa-solid fa-code text-cyber-terminalGreen mr-1"></i> [✓] 100% CLEAN CODE</span>
+                <span><i class="fa-solid fa-file-zipper text-cyber-discreteCyan mr-1"></i> [✓] SECURE BACKEND DISTRIBUTION</span>
+                <span><i class="fa-solid fa-server text-cyber-neonPink mr-1"></i> [✓] SELF-HOSTED (YOUR VPS)</span>
+            </div>
+        </section>
+
+        <div class="w-full max-w-6xl text-left mb-6 font-mono text-xs text-cyber-terminalGreen tracking-widest uppercase flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyber-terminalGreen animate-pulse"></span>
             🟢 Section I : [ LIVE_DEPLOYMENT_PACKAGES ]
         </div>
 
         <section class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-6 gap-6 items-stretch mb-20">
             
-            <div class="md:col-span-6 premium-card-pink p-8 rounded-xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
+            <div class="md:col-span-6 premium-card-pink p-8 rounded-xl flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden group">
                 <div class="max-w-3xl w-full">
+                    <div class="text-[9px] bg-cyber-neonPink/10 text-cyber-neonPink font-bold tracking-widest mb-3 font-mono inline-flex items-center gap-2 border border-cyber-neonPink/20 px-2 py-0.5 rounded uppercase">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-cyber-neonPink animate-ping"></span>
+                        // [ RECOMMENDED_MATRIX ]
+                    </div>
                     <h3 class="text-xl md:text-2xl font-black text-white mb-2 uppercase tracking-wide">Kit 03 : Pack Ultimate <span class="text-cyber-neonPink">(Discord + Telegram)</span></h3>
-                    <p class="text-xs text-gray-400">L'offre groupée d'ingénierie absolue. Deux protocoles pour le prix d'un avec réduction majeure.</p>
+                    <p class="text-xs text-gray-400 leading-relaxed mb-4">The absolute engineering bundle. Combines both autonomous tracking and simultaneous alert architectures. Two protocols for the price of one with a major discount.</p>
                 </div>
+                
                 <div class="font-mono text-xs w-full md:w-auto shrink-0 text-center md:text-right">
-                    <div class="text-[10px] text-slate-500 mb-2 uppercase line-through">Value: 78 USDC</div>
-                    <button onclick="openPaymentModal('kit-ultimate', 59)" class="w-full md:px-10 py-3.5 rounded bg-transparent border-2 border-cyber-neonPink text-cyber-neonPink font-black tracking-widest uppercase hover:bg-cyber-neonPink hover:text-black transition">
+                    <div class="price-tag text-[10px] text-slate-500 mb-2 uppercase tracking-wider line-through">Value: 78 USDC</div>
+                    <button onclick="openPaymentModal('kit-ultimate', 59)" class="w-full md:px-10 py-3.5 rounded bg-transparent border-2 border-cyber-neonPink text-cyber-neonPink font-black tracking-widest uppercase transition-all duration-300 glow-btn-pink">
                         [ MINT BUNDLE // 59 USDC ]
                     </button>
                 </div>
             </div>
 
-            <div class="md:col-span-2 premium-card-green p-6 rounded-xl flex flex-col justify-between">
+            <div class="md:col-span-3 premium-card-green p-6 rounded-xl flex flex-col justify-between transition-all duration-300">
                 <div>
-                    <h4 class="text-base font-bold text-white mb-2 uppercase">Kit 01: Bot Discord</h4>
-                    <p class="text-xs text-gray-500">Écoute la blockchain Solana et pousse des données enrichies en temps réel.</p>
+                    <div class="flex justify-between items-center mb-4 font-mono text-[10px]">
+                        <span class="text-slate-600">// KIT_01 // SEC_OPS</span>
+                        <span class="text-cyber-terminalGreen border border-cyber-terminalGreen/20 px-1.5 py-0.5 rounded bg-cyber-terminalGreen/5 font-bold">[ READY ]</span>
+                    </div>
+                    <h4 class="text-base font-bold text-white mb-2 uppercase">Pure Discord Alert Bot</h4>
+                    <p class="text-xs text-gray-500 leading-relaxed mb-4">Monitors the Solana blockchain and pushes enriched data in real-time on Whale movements and targeted contract executions.</p>
                 </div>
-                <div class="font-mono text-xs mt-6">
-                    <button onclick="openPaymentModal('kit-discord', 39)" class="w-full text-center py-2.5 rounded bg-transparent border border-cyber-terminalGreen text-cyber-terminalGreen font-bold tracking-widest uppercase hover:bg-cyber-terminalGreen hover:text-black transition">
-                        [ PURCHASE // 39 USDC ]
+                <div class="font-mono text-xs mt-2">
+                    <button onclick="openPaymentModal('kit-discord', 39)" class="w-full text-center py-2.5 rounded bg-transparent border border-cyber-terminalGreen text-cyber-terminalGreen font-bold hover:bg-cyber-terminalGreen/5 tracking-widest uppercase transition">
+                        [ PURCHASE_KEY // 39 USDC ]
                     </button>
                 </div>
             </div>
 
-            <div class="md:col-span-2 premium-card-green p-6 rounded-xl flex flex-col justify-between">
+            <div class="md:col-span-3 premium-card-green p-6 rounded-xl flex flex-col justify-between transition-all duration-300">
                 <div>
-                    <h4 class="text-base font-bold text-white mb-2 uppercase">Kit 02: Bot Telegram</h4>
-                    <p class="text-xs text-gray-500">Délivre des notifications instantanées on-chain directement dans les groupes/canaux.</p>
+                    <div class="flex justify-between items-center mb-4 font-mono text-[10px]">
+                        <span class="text-slate-600">// KIT_02 // AGILITY</span>
+                        <span class="text-cyber-terminalGreen border border-cyber-terminalGreen/20 px-1.5 py-0.5 rounded bg-cyber-terminalGreen/5 font-bold">[ READY ]</span>
+                    </div>
+                    <h4 class="text-base font-bold text-white mb-2 uppercase">Pure Telegram Alert Bot</h4>
+                    <p class="text-xs text-gray-500 leading-relaxed mb-4">Delivers instant on-chain info feeds and notifications directly where immediate trading volume resides (Alpha Channels).</p>
                 </div>
-                <div class="font-mono text-xs mt-6">
-                    <button onclick="openPaymentModal('kit-telegram', 39)" class="w-full text-center py-2.5 rounded bg-transparent border border-cyber-terminalGreen text-cyber-terminalGreen font-bold tracking-widest uppercase hover:bg-cyber-terminalGreen hover:text-black transition">
-                        [ PURCHASE // 39 USDC ]
+                <div class="font-mono text-xs mt-2">
+                    <button onclick="openPaymentModal('kit-telegram', 39)" class="w-full text-center py-2.5 rounded bg-transparent border border-cyber-terminalGreen text-cyber-terminalGreen font-bold hover:bg-cyber-terminalGreen/5 tracking-widest uppercase transition">
+                        [ PURCHASE_KEY // 39 USDC ]
                     </button>
                 </div>
             </div>
 
-            <div class="md:col-span-2 premium-card-cyan p-6 rounded-xl flex flex-col justify-between">
-                <div>
-                    <h4 class="text-base font-bold text-white mb-2 uppercase">Kit 04: Boilerplates</h4>
-                    <p class="text-xs text-gray-500">Bases de code propres (Standard & Premium) pour démarrer tes dApps Solana.</p>
+            <div class="md:col-span-6 premium-card-cyan p-8 rounded-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 transition-all duration-300">
+                <div class="max-w-2xl">
+                    <div class="flex items-center gap-2 font-mono text-[10px] mb-2 text-slate-500">
+                        <span>// KIT_04 // FRAMEWORKS</span>
+                        <span class="text-cyber-discreteCyan border border-cyber-discreteCyan/20 px-1.5 py-0.5 rounded bg-cyber-discreteCyan/5 font-bold">[ DISTRIB_ACTIVE ]</span>
+                    </div>
+                    <h4 class="text-base font-bold text-white uppercase mb-2">Web3 Developer Boilerplates (Standard &amp; Premium)</h4>
+                    <p class="text-xs text-gray-400 leading-relaxed">Highly secure frontend/backend templates to architect a production-ready Solana dApp without coding cryptographic authentication from scratch.</p>
                 </div>
-                <div class="font-mono text-xs mt-6">
-                    <button onclick="openPaymentModal('kit-boilerplate', 29)" class="w-full text-center py-2.5 rounded bg-transparent border border-cyber-discreteCyan text-cyber-discreteCyan font-bold tracking-widest uppercase hover:bg-cyber-discreteCyan hover:text-black transition">
-                        [ PURCHASE // 29 USDC ]
+                
+                <div class="font-mono text-xs w-full lg:w-auto shrink-0 flex flex-col sm:flex-row gap-3">
+                    <button onclick="openPaymentModal('kit-boilerplate-standard', 29)" class="px-5 py-3 rounded bg-transparent border border-slate-800 text-slate-300 hover:border-cyber-discreteCyan hover:text-cyber-discreteCyan font-bold transition uppercase tracking-wider">
+                        Standard License <span class="text-white ml-1">// 29 USDC</span>
+                    </button>
+                    <button onclick="openPaymentModal('kit-boilerplate-premium', 79)" class="px-5 py-3 rounded bg-transparent border border-cyber-discreteCyan text-cyber-discreteCyan font-bold hover:bg-cyber-discreteCyan/10 transition uppercase tracking-wider">
+                        Premium License <span class="text-white ml-1">// 79 USDC</span>
                     </button>
                 </div>
             </div>
+
         </section>
 
-        <div class="w-full max-w-6xl text-left mb-6 font-mono text-xs text-cyber-discreteCyan tracking-widest uppercase">
-            🔵 Section I_I : [ IN_COMPILATION_PIPELINE ]
+        <div class="w-full max-w-6xl text-left mb-6 font-mono text-xs text-cyber-discreteCyan tracking-widest uppercase flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyber-discreteCyan animate-pulse"></span>
+            🔵 Section II : [ IN_COMPILATION_PIPELINE ]
         </div>
 
-        <section class="w-full max-w-6xl premium-card-cyan p-8 rounded-xl flex flex-col md:flex-row justify-between items-center gap-8 mb-10">
-            <div class="max-w-2xl w-full">
-                <h3 class="text-xl font-bold text-white mb-2 uppercase tracking-wide">Accès Anticipé / Outils Avancés</h3>
-                <p class="text-xs text-gray-400 mb-4">Inscris-toi sur le registre pour être notifié silencieusement lors du déploiement des prochains outils (Snipers, Volume Bots, etc).</p>
+        <section class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch mb-20">
+            <div class="bg-cyber-dark/20 border border-slate-950 border-t-2 border-t-cyber-discreteCyan/30 p-6 rounded-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-start mb-3 font-mono text-[10px]">
+                        <span class="text-gray-600">// KIT_05</span>
+                        <span class="text-cyber-discreteCyan bg-cyber-discreteCyan/5 border border-cyber-discreteCyan/20 px-1.5 py-0.5 rounded">[ PIPELINE // COMPILING ]</span>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-300 uppercase mb-2">Auto-Split Payment Script (Solana Pay Splitter)</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed mb-4">A raw script that receives native funds or SPL tokens on a Solana Pay address and automatically redistributes them to partner wallets.</p>
+                </div>
+                <form onsubmit="handlePipelineSubmit(event, this)" class="pipeline-alpha-form font-mono text-xs mt-4">
+                    <input type="hidden" name="alpha_product" value="solana-pay-splitter">
+                    <div class="flex items-center gap-1 border-b border-slate-900 focus-within:border-cyber-discreteCyan pb-1 transition">
+                        <span class="text-slate-700 font-bold shrink-0">$</span>
+                        <input type="email" name="email" required placeholder="opsnode register --alpha" class="bg-transparent focus:outline-none w-full text-cyber-discreteCyan placeholder-slate-700 text-xs">
+                    </div>
+                    <div class="alpha-status-message mt-2 text-[10px] hidden text-slate-500"></div>
+                </form>
             </div>
-            
-            <div class="w-full md:w-auto shrink-0 flex flex-col gap-3 font-mono">
-                <input type="email" id="pipeline-email" placeholder="ENTER_EMAIL_ADDRESS..." class="w-full md:w-72 bg-cyber-dark border border-slate-800 rounded px-4 py-3 text-xs text-white outline-none focus:border-cyber-discreteCyan transition">
-                <button onclick="registerPipeline()" class="w-full py-3 rounded bg-transparent border border-cyber-discreteCyan text-cyber-discreteCyan text-xs font-bold tracking-widest uppercase hover:bg-cyber-discreteCyan hover:text-black transition">
-                    [ INITIATE_REGISTRY ]
-                </button>
+
+            <div class="bg-cyber-dark/20 border border-slate-950 border-t-2 border-t-cyber-discreteCyan/30 p-6 rounded-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-start mb-3 font-mono text-[10px]">
+                        <span class="text-gray-600">// KIT_06</span>
+                        <span class="text-cyber-discreteCyan bg-cyber-discreteCyan/5 border border-cyber-discreteCyan/20 px-1.5 py-0.5 rounded">[ PIPELINE // ARCHITECTURE_DESIGN ]</span>
+                    </div>
+                    <h3 class="text-base font-bold text-slate-300 uppercase mb-2">Metadata &amp; Batch NFT Minter (CLI Tool)</h3>
+                    <p class="text-xs text-gray-500 leading-relaxed mb-4">Upload and mint entire collections of files and metadata directly from your terminal via the Metaplex SDK.</p>
+                </div>
+                <form onsubmit="handlePipelineSubmit(event, this)" class="pipeline-alpha-form font-mono text-xs mt-4">
+                    <input type="hidden" name="alpha_product" value="batch-nft-minter">
+                    <div class="flex items-center gap-1 border-b border-slate-900 focus-within:border-cyber-discreteCyan pb-1 transition">
+                        <span class="text-slate-700 font-bold shrink-0">$</span>
+                        <input type="email" name="email" required placeholder="opsnode register --alpha" class="bg-transparent focus:outline-none w-full text-cyber-discreteCyan placeholder-slate-700 text-xs">
+                    </div>
+                    <div class="alpha-status-message mt-2 text-[10px] hidden text-slate-500"></div>
+                </form>
             </div>
         </section>
     </main>
 
-    <footer class="w-full border-t border-slate-900 bg-cyber-black py-8 mt-auto">
-        <div class="container mx-auto px-8 flex flex-col md:flex-row justify-between items-center font-mono text-[10px] text-gray-600 uppercase">
-            <p>© 2026 OPSNODE.SHIP — ALL PROTOCOLS SECURED.</p>
-            <div class="flex gap-4 mt-4 md:mt-0">
-                <a href="#" class="hover:text-cyber-terminalGreen transition">[ TERMS ]</a>
-                <a href="#" class="hover:text-cyber-terminalGreen transition">[ PRIVACY ]</a>
-                <a href="#" class="hover:text-cyber-terminalGreen transition">[ CONTACT_NODE ]</a>
-            </div>
+    <footer class="w-full border-t border-slate-950 bg-black/40 px-4 md:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono text-gray-600">
+        <div>&copy; 2026 <span class="text-gray-400">OPSNODE</span>. Code distribution layer. Permanent cryptographic keys.</div>
+        <div class="flex flex-wrap items-center justify-center gap-6 text-gray-400">
+            <a href="https://opsnode.link" class="hover:text-cyber-neonPink transition">// central_hub</a>
+            <a href="https://tools.opsnode.link" class="hover:text-cyber-discreteCyan transition">// tools_matrix</a>
+            <a href="https://github.com/opsnode-infra" target="_blank" class="hover:text-cyber-terminalGreen transition"><i class="fa-brands fa-github"></i> source_manifest</a>
         </div>
     </footer>
 
@@ -147,19 +220,13 @@
         <div class="premium-card-green p-8 rounded-xl max-w-md w-full relative">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-500 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
             <h2 class="text-cyber-terminalGreen font-mono font-bold text-lg mb-4 text-center uppercase">[ SECURE_CHECKOUT ]</h2>
+            <p class="text-xs text-gray-400 font-mono text-center mb-6">Send USDC via the Solana network.</p>
             
-            <p class="text-xs text-gray-400 font-mono text-center mb-6">Envoyez les USDC via le réseau Solana.</p>
-
-            <button onclick="payWithInjectedWallet()" id="injected-btn" class="w-full mb-4 py-3 bg-white text-black font-bold font-mono text-sm rounded uppercase hover:bg-gray-200 transition hidden">
-                <i class="fa-solid fa-wallet mr-2"></i> Connect & Pay (Desktop)
-            </button>
-
             <div class="border border-slate-800 rounded p-4 flex flex-col items-center">
-                <span class="text-[10px] text-gray-500 font-mono mb-3 uppercase">Universel : Scanner avec Phantom/Solflare</span>
+                <span class="text-[10px] text-gray-500 font-mono mb-3 uppercase">Universal: Scan with Phantom/Solflare</span>
                 <div id="qrcode" class="bg-white p-2 rounded"></div>
-                
                 <div class="mt-4 w-full">
-                    <input type="text" id="tx-signature" placeholder="Coller le Hash de Transaction..." class="w-full bg-cyber-dark border border-slate-800 rounded p-2 text-xs font-mono text-white text-center focus:border-cyber-terminalGreen outline-none">
+                    <input type="text" id="tx-signature" placeholder="Paste Transaction Hash here..." class="w-full bg-cyber-dark border border-slate-800 rounded p-2 text-xs font-mono text-white text-center focus:border-cyber-terminalGreen outline-none">
                     <button onclick="verifyManualTransaction()" id="verify-btn" class="mt-2 w-full py-2 bg-cyber-terminalGreen text-black font-bold font-mono text-xs rounded uppercase hover:bg-green-400 transition">
                         [ VERIFY_TRANSACTION ]
                     </button>
@@ -171,36 +238,38 @@
     <script>
         const TREASURY_WALLET = "TON_ADRESSE_SOLANA_PUBLIQUE_ICI";
         const USDC_MINT = "EPjFW3dp257eaD1Cw715lQJ459WFinDQ63198UXISsg";
-        
         let currentPackage = null;
         let qrCodeInstance = null;
-        let currentUserWallet = null;
+        let currentUserWallet = "MOBILE_SCAN_FALLBACK";
 
-        // Détection Wallet Navigateur
-        window.addEventListener('load', () => {
-            const provider = window.solana || window.solflare;
-            if (provider) document.getElementById('injected-btn').classList.remove('hidden');
-        });
+        // Logic to dynamically connect Phantom wallet on Desktop for convenience
+        async function connectPhantomWallet() {
+            try {
+                const provider = window.solana || window.solflare;
+                if (!provider) return alert(">> ERROR: NO_WALLET_DETECTED.");
+                
+                await provider.connect();
+                currentUserWallet = provider.publicKey.toString();
+                
+                const walletBtn = document.getElementById('wallet-trigger');
+                walletBtn.innerText = `[ ADDR: ${currentUserWallet.substring(0,4)}...${currentUserWallet.substring(currentUserWallet.length-4)} ]`;
+                walletBtn.style.borderColor = "#00D2FF";
+                walletBtn.style.color = "#00D2FF";
+            } catch (err) {
+                console.log("Wallet connection declined.");
+            }
+        }
 
         function openPaymentModal(packageId, priceUi) {
             currentPackage = packageId;
             document.getElementById('payment-modal').classList.remove('hidden');
             
-            // Construit l'URL Solana Pay standard
-            // Le paramètre "reference" (clé publique aléatoire) permet d'avoir une transaction unique
             const reference = solanaWeb3.Keypair.generate().publicKey.toBase58(); 
             const solanaPayUrl = `solana:${TREASURY_WALLET}?amount=${priceUi}&spl-token=${USDC_MINT}&reference=${reference}&message=OPSNODE_SHIP_${packageId}`;
 
             const qrContainer = document.getElementById("qrcode");
             qrContainer.innerHTML = "";
-            qrCodeInstance = new QRCode(qrContainer, {
-                text: solanaPayUrl,
-                width: 150,
-                height: 150,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.L
-            });
+            qrCodeInstance = new QRCode(qrContainer, { text: solanaPayUrl, width: 150, height: 150, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L });
         }
 
         function closeModal() {
@@ -209,40 +278,22 @@
             document.getElementById('tx-signature').value = '';
         }
 
-        async function payWithInjectedWallet() {
-            try {
-                const provider = window.solana || window.solflare;
-                await provider.connect();
-                currentUserWallet = provider.publicKey.toString();
-                
-                alert("Copie l'adresse de la trésorerie et envoie les USDC via ton extension. \nTrésorerie: " + TREASURY_WALLET);
-            } catch (err) {
-                alert(">> ERROR: CONNECTION_REJECTED.");
-            }
-        }
-
         async function verifyManualTransaction() {
             const signature = document.getElementById('tx-signature').value.trim();
-            if (!signature || signature.length < 87) {
-                alert(">> ERROR: INVALID_SIGNATURE_FORMAT.");
-                return;
-            }
+            if (!signature || signature.length < 87) return alert(">> ERROR: INVALID_SIGNATURE_FORMAT.");
 
             const btn = document.getElementById('verify-btn');
             btn.innerText = "[ VERIFYING_ON_CHAIN... ]";
             btn.classList.add("animate-pulse");
 
-            const walletParam = currentUserWallet || "MOBILE_SCAN_FALLBACK";
-
             try {
                 const response = await fetch('/.netlify/functions/secure-download', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ signature: signature, packageId: currentPackage, userWallet: walletParam })
+                    body: JSON.stringify({ signature: signature, packageId: currentPackage, userWallet: currentUserWallet })
                 });
 
                 const data = await response.json();
-
                 if (response.ok && data.secureUrl) {
                     alert(">> ACCESS_GRANTED. INITIATING_DOWNLOAD...");
                     window.location.href = data.secureUrl;
@@ -258,29 +309,37 @@
             }
         }
 
-        // Script pour la section Pipeline
-        async function registerPipeline() {
-            const email = document.getElementById('pipeline-email').value;
-            if (!email || !email.includes('@')) {
-                alert(">> ERROR: INVALID_EMAIL_FORMAT.");
-                return;
-            }
-
+        // Pipeline form logic pointing to your serverless backend
+        async function handlePipelineSubmit(event, form) {
+            event.preventDefault();
+            const statusDiv = form.querySelector('.alpha-status-message');
+            const inputEmail = form.querySelector('input[type="email"]');
+            
+            statusDiv.innerText = ">> REGISTRATION_REQUEST_RECEIVED... COMPILING ENCRYPTED LOGS...";
+            statusDiv.style.color = "#00D2FF";
+            statusDiv.classList.remove('hidden');
+            
             try {
                 const response = await fetch('/.netlify/functions/pipeline-register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, product: "Global_Waitlist" })
+                    body: JSON.stringify({
+                        email: inputEmail.value,
+                        product: form.querySelector('input[name="alpha_product"]').value
+                    })
                 });
-
+                
                 if (response.ok) {
-                    alert(">> REGISTRY_UPDATED. YOU WILL BE NOTIFIED.");
-                    document.getElementById('pipeline-email').value = '';
+                    statusDiv.innerText = `>> SUCCESS: IDENTIFIER SECURELY WHITELISTED.`;
+                    statusDiv.style.color = "#00FF66";
+                    inputEmail.value = "";
                 } else {
-                    alert(">> ERROR: REGISTRY_DOWN.");
+                    statusDiv.innerText = ">> ERROR: GATEWAY_REFUSED.";
+                    statusDiv.style.color = "#ff007f";
                 }
-            } catch (err) {
-                alert(">> ERROR: NETWORK_FAILURE.");
+            } catch (error) {
+                statusDiv.innerText = ">> ERROR: HOST_TIMEOUT.";
+                statusDiv.style.color = "#ff007f";
             }
         }
     </script>
