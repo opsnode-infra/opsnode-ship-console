@@ -1,67 +1,87 @@
-// netlify/functions/secure-download.js
-const axios = require('axios');
+const { Connection, PublicKey } = require('@solana/web3.js');
+const Redis = require('ioredis');
+
+// Initialisation via les variables d'environnement Netlify
+const redis = new Redis(process.env.UPSTASH_REDIS_URL);
+const solana = new Connection(process.env.HELIUS_RPC_URL, 'confirmed');
+
+const TREASURY_ADDRESS = process.env.TREASURY_WALLET; 
+const USDC_MINT = "EPjFW3dp257eaD1Cw715lQJ459WFinDQ63198UXISsg"; 
+const MAX_AGE_SECONDS = 600; // 10 minutes max
+
+// Dictionnaire exact de tes 4 produits
+const PRODUCTS = {
+    'kit-discord': { price: 39000000 },
+    'kit-telegram': { price: 39000000 },
+    'kit-ultimate': { price: 59000000 },
+    'kit-boilerplate': { price: 29000000 } // Ajout du Kit 4 (29 USDC par exemple)
+};
 
 exports.handler = async (event, context) => {
-    // Sécurité : On accepte uniquement les requêtes POST
-    if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
-    }
+    if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method Not Allowed' };
 
     try {
-        const { packageId, walletAddress } = JSON.parse(event.body);
+        const { signature, packageId, userWallet } = JSON.parse(event.body);
 
-        if (!packageId || !walletAddress) {
-            return { statusCode: 400, body: JSON.stringify({ error: "Paramètres manquants." }) };
+        // 1. FILTRE DE FORME
+        if (!signature || !/^[1-9A-HJ-NP-Za-km-z]{87,88}$/.test(signature)) {
+            return { statusCode: 400, body: JSON.stringify({ error: "INVALID_SIGNATURE_FORMAT" }) };
+        }
+        if (!PRODUCTS[packageId]) {
+            return { statusCode: 400, body: JSON.stringify({ error: "UNKNOWN_PRODUCT" }) };
         }
 
-        // Mapping de tes verrous (Locks) Unlock Protocol sur Solana
-        const lockMapping = {
-            'kit-discord': '0xAdresseLockDiscordIci',
-            'kit-telegram': '0xAdresseLockTelegramIci',
-            'kit-ultimate': '0xAdresseLockUltimateIci',
-            'boilerplate': '0xAdresseLockBoilerplateIci'
-        };
+        // 2. FILTRE ANTI-REJEU (Redis)
+        const isReplay = await redis.get(`sig:${signature}`);
+        if (isReplay) return { statusCode: 403, body: JSON.stringify({ error: "REPLAY_ATTACK_BLOCKED" }) };
 
-        const targetLock = lockMapping[packageId];
-        if (!targetLock) {
-            return { statusCode: 404, body: JSON.stringify({ error: "Package introuvable." }) };
+        // 3. LECTURE BLOCKCHAIN (Helius)
+        const tx = await solana.getTransaction(signature, { maxSupportedTransactionVersion: 0 });
+        if (!tx) return { statusCode: 404, body: JSON.stringify({ error: "TRANSACTION_NOT_FOUND" }) };
+
+        // 4. VÉRIFICATION DU TEMPS
+        const currentUnixTime = Math.floor(Date.now() / 1000);
+        if ((currentUnixTime - tx.blockTime) > MAX_AGE_SECONDS) {
+            return { statusCode: 403, body: JSON.stringify({ error: "TRANSACTION_EXPIRED" }) };
         }
 
-        // Interrogation de l'API Unlock pour vérifier la possession réelle de la clé
-        const unlockVerificationUrl = `https://api.unlock-protocol.com/api/key/${targetLock}/${walletAddress}`;
-        let hasValidKey = false;
+        // 5. & 6. VÉRIFICATION FINANCIÈRE & IDENTITÉ
+        let isValidPayment = false;
+        const preTokenBalances = tx.meta.preTokenBalances || [];
+        const postTokenBalances = tx.meta.postTokenBalances || [];
 
-        try {
-            const check = await axios.get(unlockVerificationUrl);
-            if (check.data && check.data.owner === walletAddress) {
-                hasValidKey = true;
-            }
-        } catch (e) {
-            hasValidKey = false; 
-        }
+        const treasuryPostBalance = postTokenBalances.find(b => b.owner === TREASURY_ADDRESS && b.mint === USDC_MINT);
+        const treasuryPreBalance = preTokenBalances.find(b => b.owner === TREASURY_ADDRESS && b.mint === USDC_MINT);
+        
+        const amountReceived = (treasuryPostBalance?.uiTokenAmount?.uiAmount || 0) - (treasuryPreBalance?.uiTokenAmount?.uiAmount || 0);
+        const expectedUiAmount = PRODUCTS[packageId].price / 1000000;
 
-        // AVERTISSEMENT : Pour tes tests locaux ou avant d'avoir créé tes vrais locks, 
-        // tu peux décommenter la ligne suivante pour forcer le téléchargement :
-        // hasValidKey = true;
+        const isUserSigner = tx.transaction.message.accountKeys.some((account, index) => 
+            account.pubkey.toBase58() === userWallet && tx.transaction.message.isAccountSigner(index)
+        );
 
-        if (!hasValidKey) {
-            return { statusCode: 403, body: JSON.stringify({ error: "CRYPTOGRAPHIC_KEY_INVALID" }) };
-        }
+        if (amountReceived >= expectedUiAmount && isUserSigner) isValidPayment = true;
 
-        // URLs privées de stockage de tes scripts (Ex: Serveur privé, Bucket AWS S3 ou dossier caché)
-        const secureStorage = {
-            'kit-discord': 'https://ton-stockage-prive.com/archives/solana-discord-bot.zip',
-            'kit-telegram': 'https://ton-stockage-prive.com/archives/solana-telegram-bot.zip',
-            'kit-ultimate': 'https://ton-stockage-prive.com/archives/solana-ultimate-pack.zip',
-            'boilerplate': 'https://ton-stockage-prive.com/archives/solana-boilerplates.zip'
+        if (!isValidPayment) return { statusCode: 403, body: JSON.stringify({ error: "PAYMENT_VALIDATION_FAILED" }) };
+
+        // 7. VERROUILLAGE SÉCURITÉ
+        await redis.set(`sig:${signature}`, "consumed", "EX", MAX_AGE_SECONDS);
+
+        // 8. DÉLIVRANCE (URLs secrètes factices à remplacer par tes vrais liens)
+        const directSecretUrls = {
+            'kit-discord': 'https://ton-stockage.com/solana-discord-bot.zip',
+            'kit-telegram': 'https://ton-stockage.com/solana-telegram-bot.zip',
+            'kit-ultimate': 'https://ton-stockage.com/solana-ultimate-pack.zip',
+            'kit-boilerplate': 'https://ton-stockage.com/solana-boilerplates.zip'
         };
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ downloadUrl: secureStorage[packageId] })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secureUrl: directSecretUrls[packageId] })
         };
 
     } catch (error) {
-        return { statusCode: 500, body: JSON.stringify({ error: "GATEWAY_ERROR" }) };
+        return { statusCode: 500, body: JSON.stringify({ error: "INTERNAL_CRYPTO_GATEWAY_ERROR" }) };
     }
 };

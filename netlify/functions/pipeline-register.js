@@ -2,6 +2,7 @@
 const axios = require('axios');
 
 exports.handler = async (event, context) => {
+    // N'accepte que les requêtes POST
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
@@ -9,12 +10,12 @@ exports.handler = async (event, context) => {
     try {
         const { email, product } = JSON.parse(event.body);
 
+        // Vérification de base des données entrantes
         if (!email || !product) {
             return { statusCode: 400, body: JSON.stringify({ error: "Données incomplètes." }) };
         }
 
-        // Tu configures cette variable d'environnement directement dans l'interface de Netlify 
-        // (Site settings -> Environment variables) pour qu'elle n'apparaisse JAMAIS sur ton GitHub public.
+        // Webhook Discord privé stocké dans les variables d'environnement Netlify
         const DISCORD_LOGS_WEBHOOK = process.env.PRIVATE_DISCORD_PIPELINE_WEBHOOK;
 
         if (DISCORD_LOGS_WEBHOOK) {
